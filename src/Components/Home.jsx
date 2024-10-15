@@ -2,7 +2,7 @@ import { useState } from "react";
 import OpenAI from "openai";
 import { InputBox } from "./Inputbox";
 import Navbar from "./Navbar";
-import ImageGallery from "./ImageGallery"; // Import the ImageGallery component
+import ImageGallery from "./ImageGallery";
 import imageArray from "./utils/imagearray";
 import Part1 from "./Part1";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -20,16 +20,24 @@ function Home() {
   const [imageUrl, setImageUrl] = useState("");
   const [create, setCreate] = useState(false);
   const [user, loading] = useAuthState(auth);
-  const [submitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
   const generateImage = async () => {
-    const imageParameters = {
-      prompt: userPrompt,
-      size: "256x256",
-    };
-    const response = await openai.images.generate(imageParameters);
-    setImageUrl(response.data[0].url);
-    setCreate(true);
-    setUserPrompt("");
+    setSubmitting(true);
+    try {
+      const imageParameters = {
+        prompt: userPrompt,
+        size: "512x512",
+      };
+      const response = await openai.images.generate(imageParameters);
+      setImageUrl(response.data[0].url);
+      setCreate(true);
+      setUserPrompt("");
+    } catch (error) {
+      console.error("Error generating image:", error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const downloadImage = () => {
@@ -42,92 +50,84 @@ function Home() {
       document.body.removeChild(link);
     }
   };
+
   const handleSurprise = () => {
-    // Get a random item from imageArray
-    const randomItem =
-      imageArray[Math.floor(Math.random() * imageArray.length)];
-    // Set the text of the random item in the input
+    const randomItem = imageArray[Math.floor(Math.random() * imageArray.length)];
     setUserPrompt(randomItem.text);
   };
-  if (loading) {
+
+  if (loading || submitting) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#141414]">
-        <ClipLoader
-          color="red"
-          loading={loading || submitting}
-          size={120}
-          aria-label="Loading Spinner"
-          className="ml-10"
-          data-testid="loader"
-        />
+      <div className="flex items-center justify-center h-screen bg-white">
+        <ClipLoader color="purple" size={120} />
       </div>
     );
   }
+
+  if (!user) {
+    return <LoginLanding />;
+  }
+
   return (
-    <>
-      {user ? (
-        <>
-          <Navbar />
-          <div className="flex mt-20 flex-col">
-            <Part1 />
-            <div className="flex flex-row ml-7 mt-20 ">
-              <h1 className="mt-1">Start with a detailed description</h1>
-              <button
-                className="w-30 bg-gray-200 mt-1 p-1 rounded-lg font-bold ml-3 text-xs "
-                onClick={handleSurprise}
-              >
-                Surprise me
-              </button>
-            </div>
-            <InputBox
-              setAttribute={setUserPrompt}
-              className="w-20 p-3 border border-black"
-            />
+    <div className="min-h-screen bg-white text-gray-800">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        <Part1 />
+        <div className="mt-12 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <h2 className="text-xl font-semibold">Start with a detailed description</h2>
+            <button
+              className="px-4 py-2 bg-gray-200 rounded-lg font-bold text-sm hover:bg-gray-300 transition-colors"
+              onClick={handleSurprise}
+            >
+              Surprise me
+            </button>
+          </div>
+          <div className="space-y-4">
+           
             <input
               type="text"
               value={userPrompt}
-              className="p-3 shadow-xl border border-white ml-5 mr-5 flex flex-row rounded-lg"
               onChange={(e) => setUserPrompt(e.target.value)}
               placeholder="Enter your prompt"
+              className="w-full p-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600"
             />
-            <div className="flex justify-center items-center">
-              <button
-                className="w-20 px-5 py-5 bg-purple-600 flex justify-center items-center font-medium rounded-lg mt-10 text-white"
-                onClick={() => generateImage()}
-              >
-                Generate
-              </button>
-            </div>
-
-            {/* Use the ImageGallery component here */}
-            {create ? (
-              <div className="flex justify-center items-center flex-col">
-                {imageUrl && (
-                  <img
-                    src={imageUrl}
-                    className="mt-10 rounded-lg"
-                    alt="ai thing"
-                  />
-                )}
-                <button
-                  className="w-20 p-4 bg-blue-600 flex justify-center items-center font-medium rounded-lg mt-5 text-white ml-2"
-                  onClick={() => downloadImage()}
-                  disabled={!imageUrl}
-                >
-                  Download
-                </button>
-              </div>
-            ) : (
-              <ImageGallery />
-            )}
           </div>
-        </>
-      ) : (
-        <>
-          <LoginLanding />
-        </>
-      )}
-    </>
+          <div className="flex justify-center">
+            <button
+              className="px-6 py-3 bg-purple-600 font-medium rounded-lg text-white hover:bg-purple-700 transition-colors"
+              onClick={generateImage}
+              disabled={submitting}
+            >
+              {submitting ? "Generating..." : "Generate"}
+            </button>
+          </div>
+        </div>
+
+        {create ? (
+          <div className="mt-12 flex flex-col items-center space-y-6">
+            {imageUrl && (
+              <img
+                src={imageUrl}
+                className="max-w-full h-auto rounded-lg shadow-lg"
+                alt="AI generated image"
+              />
+            )}
+            <button
+              className="px-6 py-3 bg-blue-600 font-medium rounded-lg text-white hover:bg-blue-700 transition-colors"
+              onClick={downloadImage}
+              disabled={!imageUrl}
+            >
+              Download
+            </button>
+          </div>
+        ) : (
+          <div className="mt-12">
+            <ImageGallery />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
