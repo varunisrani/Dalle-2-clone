@@ -11,7 +11,7 @@ const Part1 = () => {
       </p>
       <p className="mt-3">
         If you havent yet, try DALL·E 3, which is available for ChatGPT Plus,
-        Team and Enterprise users and through the OpenAI API.
+        Team and Enterprise users and through the OpenAI API
       </p>
     </div>
   );
